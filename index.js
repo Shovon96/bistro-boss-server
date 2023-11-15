@@ -25,28 +25,33 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-console.log('connect with mongodb');
+    console.log('connect with mongodb');
     // collections
     const menuCollection = client.db('bistroBoss').collection('menu')
     const reviewCollection = client.db('bistroBoss').collection('reviews')
     const cartCollection = client.db('bistroBoss').collection('carts')
 
     // menus data get apis
-    app.get('/menu', async (req, res)=> {
-        const result = await menuCollection.find().toArray()
-        res.send(result)
+    app.get('/menu', async (req, res) => {
+      const result = await menuCollection.find().toArray()
+      res.send(result)
     })
 
     // reviews data get apis
-    app.get('/reviews', async (req, res)=> {
-        const result = await reviewCollection.find().toArray()
-        res.send(result)
+    app.get('/reviews', async (req, res) => {
+      const result = await reviewCollection.find().toArray()
+      res.send(result)
     })
 
     // carts releted apis
-    app.post('/carts', async(req, res)=>{
+    app.post('/carts', async (req, res) => {
       const cartItem = req.body;
       const result = await cartCollection.insertOne(cartItem)
+      res.send(result)
+    })
+
+    app.get('/carts', async (req, res)=> {
+      const result = await cartCollection.find().toArray();
       res.send(result)
     })
 
@@ -63,10 +68,10 @@ run().catch(console.dir);
 
 
 
-app.get('/', (req, res)=> {
-    res.send("Bistro boss is running")
+app.get('/', (req, res) => {
+  res.send("Bistro boss is running")
 })
 
-app.listen(port, ()=> {
-    console.log(`Bistro boss is runnin on ${port}`);
+app.listen(port, () => {
+  console.log(`Bistro boss is runnin on ${port}`);
 })
