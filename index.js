@@ -102,14 +102,14 @@ async function run() {
       res.send({ admin })
     })
 
-    app.delete('/users/:id', async (req, res) => {
+    app.delete('/users/:id', verifyAdmin, verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
       res.send(result);
     })
 
-    app.patch('/users/admin/:id', async (req, res) => {
+    app.patch('/users/admin/:id',verifyAdmin, verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
