@@ -121,6 +121,13 @@ async function run() {
 
 
     // menus data get apis
+
+    app.post('/menu', verifyToken, verifyAdmin, async (req, res)=> {
+      const menuItem = req.body;
+      const result = await menuCollection.insertOne(menuItem);
+      res.send(result)
+    })
+
     app.get('/menu', async (req, res) => {
       const result = await menuCollection.find().toArray()
       res.send(result)
