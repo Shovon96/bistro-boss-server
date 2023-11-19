@@ -109,7 +109,7 @@ async function run() {
       res.send(result);
     })
 
-    app.patch('/users/admin/:id',verifyAdmin, verifyToken, async (req, res) => {
+    app.patch('/users/admin/:id', verifyAdmin, verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
@@ -122,7 +122,7 @@ async function run() {
 
     // menus data get apis
 
-    app.post('/menu', verifyToken, verifyAdmin, async (req, res)=> {
+    app.post('/menu', verifyToken, verifyAdmin, async (req, res) => {
       const menuItem = req.body;
       const result = await menuCollection.insertOne(menuItem);
       res.send(result)
@@ -130,6 +130,13 @@ async function run() {
 
     app.get('/menu', async (req, res) => {
       const result = await menuCollection.find().toArray()
+      res.send(result)
+    })
+
+    app.delete('/menu/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await menuCollection.deleteOne(query);
       res.send(result)
     })
 
