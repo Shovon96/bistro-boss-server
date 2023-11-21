@@ -234,6 +234,61 @@ async function run() {
       res.send(result)
     })
 
+    // stats or analytics
+    app.get('/admin-stats', verifyToken, verifyAdmin, async (req, res) => {
+      const users = await userCollection.estimatedDocumentCount()
+      const menuItem = await menuCollection.estimatedDocumentCount()
+      const ordars = await paymentCollection.estimatedDocumentCount();
+      // total payment aggregate or sum
+      const result = await paymentCollection.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$price' }
+          }
+        }
+      ]).toArray()
+      const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+
+      res.send({
+        users,
+        menuItem,
+        ordars,
+        revenue
+      })
+    })
+
+    // using aggregate paipline
+    app.get('/order-stats', async (req, res) => {
+      const result = await paymentCollection.aggregate([
+        {
+          $unwind: '$menuItemIds'
+        },
+        {
+          $lookup: {
+            from: 'menu',
+            localField: 'menuItemIds',
+            foreignField: '_id',
+            as: 'menuItems'
+          }
+        },
+        {
+          $unwind: '$menuItems'
+        },
+        {
+          $group: {
+            _id: '$menuItems.category',
+            quantity: { $sum: 1 },
+            revenue: { $sum: '$menuItems.price' }
+          }
+        }
+      ]).toArray()
+
+      res.send(result)
+    })
+
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
