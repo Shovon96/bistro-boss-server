@@ -1,15 +1,15 @@
 const express = require('express');
 const app = express()
+require('dotenv').config();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const port = process.env.PORT || 5000
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 // middleWare
 app.use(cors())
 app.use(express.json())
-
 
 const uri = `mongodb://${process.env.DB_USER}:${process.env.DB_PASS}@ac-phmeoes-shard-00-00.riywk8u.mongodb.net:27017,ac-phmeoes-shard-00-01.riywk8u.mongodb.net:27017,ac-phmeoes-shard-00-02.riywk8u.mongodb.net:27017/?ssl=true&replicaSet=atlas-dhaabf-shard-0&authSource=admin&retryWrites=true&w=majority`;
 
@@ -32,12 +32,13 @@ async function run() {
     const reviewCollection = client.db('bistroBoss').collection('reviews')
     const cartCollection = client.db('bistroBoss').collection('carts')
     const userCollection = client.db('bistroBoss').collection('users')
+    const paymentCollection = client.db('bistroBoss').collection('payments')
 
 
     // jwt releted api 
     app.post('/jwt', async (req, res) => {
       const user = req.body;
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '5h' });
       res.send({ token });
     })
 
@@ -121,7 +122,6 @@ async function run() {
 
 
     // menus data get apis
-
     app.post('/menu', verifyToken, verifyAdmin, async (req, res) => {
       const menuItem = req.body;
       const result = await menuCollection.insertOne(menuItem);
@@ -130,6 +130,32 @@ async function run() {
 
     app.get('/menu', async (req, res) => {
       const result = await menuCollection.find().toArray()
+      res.send(result)
+    })
+
+    // Go to update field api
+    app.get('/menu/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: id };
+      const result = await menuCollection.findOne(query);
+      res.send(result)
+    })
+
+    // update menu one item api
+    app.patch('/menu/:id', async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          name: item.name,
+          category: item.category,
+          price: item.price,
+          recipe: item.recipe,
+          image: item.image
+        }
+      }
+      const result = await menuCollection.updateOne(filter, updatedDoc);
       res.send(result)
     })
 
@@ -164,6 +190,47 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
       const result = await cartCollection.deleteOne(query);
+      res.send(result)
+    })
+
+    // payment intent releted apis
+    app.post('/create-payment-intent', async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
+
+    // payment history post db
+    app.post('/payments', async (req, res) => {
+      const payment = req.body;
+      const paymentResult = await paymentCollection.insertOne(payment);
+
+      // carefully delete each item from the cart
+      // console.log('payment info', payment);
+      const query = {
+        _id: {
+          $in: payment.cartIds.map(id => new ObjectId(id))
+        }
+      };
+
+      const deletedResult = await cartCollection.deleteMany(query)
+      res.send({ paymentResult, deletedResult })
+    })
+
+    app.get('/payments/:email', verifyToken, async (req, res) => {
+      const query = { email: req.params.email }
+      if (req.params.email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const result = await paymentCollection.find(query).toArray()
       res.send(result)
     })
 
